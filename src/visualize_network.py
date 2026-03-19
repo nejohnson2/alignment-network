@@ -168,7 +168,167 @@ def build_visualization(analysis_path: str, output_path: str) -> None:
         )
 
     net.save_graph(output_path)
+
+    # Inject author search/highlight widget into the HTML
+    _inject_search_widget(output_path)
     logger.info("Saved interactive visualization to %s", output_path)
+
+
+def _inject_search_widget(html_path: str) -> None:
+    """Inject a search box that highlights an author and their connections."""
+    with open(html_path, encoding="utf-8") as f:
+        html = f.read()
+
+    widget_html = """
+<div id="author-search" style="position:fixed;top:15px;left:15px;z-index:1000;
+    background:rgba(30,30,60,0.95);padding:12px 16px;border-radius:8px;
+    border:1px solid #555;font-family:sans-serif;color:#e0e0e0;min-width:280px;">
+  <label for="searchBox" style="font-size:14px;font-weight:bold;display:block;margin-bottom:6px;">
+    Search Author</label>
+  <input id="searchBox" type="text" placeholder="Type a name..."
+    style="width:100%;padding:8px 10px;font-size:14px;border:1px solid #666;
+    border-radius:4px;background:#2a2a4a;color:#fff;outline:none;"
+    list="authorList" autocomplete="off">
+  <datalist id="authorList"></datalist>
+  <div id="searchInfo" style="margin-top:8px;font-size:12px;color:#aaa;"></div>
+  <button id="clearBtn" style="margin-top:6px;padding:4px 12px;font-size:12px;
+    background:#444;color:#ddd;border:1px solid #666;border-radius:4px;cursor:pointer;
+    display:none;" onclick="clearSearch()">Clear</button>
+</div>
+
+<script type="text/javascript">
+(function() {
+    // Wait for network to be ready
+    var checkReady = setInterval(function() {
+        if (typeof network !== 'undefined' && network !== null) {
+            clearInterval(checkReady);
+            initSearch();
+        }
+    }, 200);
+
+    function initSearch() {
+        var allNodes = network.body.data.nodes;
+        var allEdges = network.body.data.edges;
+        var nodeIds = allNodes.getIds();
+
+        // Populate datalist
+        var datalist = document.getElementById('authorList');
+        nodeIds.sort().forEach(function(id) {
+            var opt = document.createElement('option');
+            opt.value = id;
+            datalist.appendChild(opt);
+        });
+
+        // Store original styles
+        var originalNodes = {};
+        nodeIds.forEach(function(id) {
+            var n = allNodes.get(id);
+            originalNodes[id] = {color: n.color, opacity: 1.0, font: Object.assign({}, n.font)};
+        });
+        var originalEdges = {};
+        allEdges.getIds().forEach(function(id) {
+            var e = allEdges.get(id);
+            originalEdges[id] = {color: e.color, width: e.width};
+        });
+
+        var searchBox = document.getElementById('searchBox');
+        var searchInfo = document.getElementById('searchInfo');
+        var clearBtn = document.getElementById('clearBtn');
+
+        searchBox.addEventListener('input', function() {
+            var query = searchBox.value.trim().toLowerCase();
+            if (!query) { resetAll(); return; }
+
+            // Find matching node
+            var match = nodeIds.find(function(id) {
+                return id.toLowerCase() === query;
+            });
+            if (!match) {
+                // Partial match
+                match = nodeIds.find(function(id) {
+                    return id.toLowerCase().includes(query);
+                });
+            }
+            if (!match) { resetAll(); searchInfo.textContent = 'No match'; return; }
+
+            highlightAuthor(match);
+        });
+
+        function highlightAuthor(authorId) {
+            var connEdges = allEdges.get().filter(function(e) {
+                return e.from === authorId || e.to === authorId;
+            });
+            var neighborIds = new Set();
+            neighborIds.add(authorId);
+            connEdges.forEach(function(e) {
+                neighborIds.add(e.from);
+                neighborIds.add(e.to);
+            });
+
+            // Dim all nodes
+            var nodeUpdates = nodeIds.map(function(id) {
+                if (id === authorId) {
+                    return {id: id, opacity: 1.0, borderWidth: 5,
+                        color: {background: originalNodes[id].color, border: '#ffffff'}};
+                } else if (neighborIds.has(id)) {
+                    return {id: id, opacity: 1.0, color: originalNodes[id].color};
+                } else {
+                    return {id: id, opacity: 0.1,
+                        color: {background: '#333', border: '#333'},
+                        font: {color: 'rgba(200,200,200,0.15)'}};
+                }
+            });
+            allNodes.update(nodeUpdates);
+
+            // Dim all edges
+            var connEdgeIds = new Set(connEdges.map(function(e) { return e.id; }));
+            var edgeUpdates = allEdges.getIds().map(function(id) {
+                if (connEdgeIds.has(id)) {
+                    return {id: id, color: '#ffffff', width: originalEdges[id].width + 1};
+                } else {
+                    return {id: id, color: 'rgba(50,50,50,0.1)', width: 0.5};
+                }
+            });
+            allEdges.update(edgeUpdates);
+
+            searchInfo.textContent = authorId + ': ' + (neighborIds.size - 1) + ' co-authors';
+            clearBtn.style.display = 'inline-block';
+
+            // No zoom — keep full network view
+        }
+
+        function resetAll() {
+            var nodeUpdates = nodeIds.map(function(id) {
+                return {id: id, opacity: 1.0, borderWidth: 2,
+                    color: originalNodes[id].color,
+                    font: originalNodes[id].font};
+            });
+            allNodes.update(nodeUpdates);
+
+            var edgeUpdates = allEdges.getIds().map(function(id) {
+                return {id: id, color: originalEdges[id].color, width: originalEdges[id].width};
+            });
+            allEdges.update(edgeUpdates);
+
+            searchInfo.textContent = '';
+            clearBtn.style.display = 'none';
+        }
+
+        window.clearSearch = function() {
+            searchBox.value = '';
+            resetAll();
+            network.fit({animation: {duration: 500}});
+        };
+    }
+})();
+</script>
+"""
+
+    # Insert before closing </body>
+    html = html.replace("</body>", widget_html + "\n</body>")
+
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html)
 
 
 def main():
