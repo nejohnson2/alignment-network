@@ -1,0 +1,12 @@
+key,title,year,n_authors,avg_author_importance,max_author_importance
+greenblatt_alignment_2024,Alignment faking in large language models,2024,20,0.7644,0.9669
+denison_sycophancy_2024,Sycophancy to Subterfuge: Investigating Reward-Tampering in Large Language Models,2024,14,0.7255,0.9669
+marks_auditing_2025,Auditing language models for hidden objectives,2025,35,0.7186,0.9669
+shah_goal_2022,Goal Misgeneralization: Why Correct Specifications Aren't Enough For Correct Goals,2022,7,0.716,0.8773
+chen_reasoning_nodate,Reasoning Models Don’t Always Say What They Think,n.d.,15,0.6605,0.9532
+phuong_evaluating_2025,Evaluating Frontier Models for Stealth and Situational Awareness,2025,9,0.6573,0.8734
+wen_language_2024,Language Models Learn to Mislead Humans via RLHF,2024,9,0.5138,0.9669
+shah_approach_2025,An Approach to Technical AGI Safety and Security,2025,30,0.5062,0.8734
+phuong_evaluating_2024,Evaluating Frontier Models for Dangerous Capabilities,2024,27,0.4918,0.8734
+baker_monitoring_2025,Monitoring Reasoning Models for Misbehavior and the Risks of Promoting Obfuscation,2025,9,0.3205,0.3205
+sheshadri_latent_2025,Latent Adversarial Training Improves Robustness to Persistent Harmful Behaviors in LLMs,2025,11,0.2913,0.9522
